@@ -1,0 +1,80 @@
+CREATE USER kurs_adm WITH PASSWORD 'kurs';
+
+-- Таблица клиентов
+CREATE TABLE clients
+(
+    client_id       SERIAL PRIMARY KEY,
+    first_name      VARCHAR(100)       NOT NULL,
+    last_name       VARCHAR(100)       NOT NULL,
+    birth_date      DATE               NOT NULL,
+    passport_number VARCHAR(20) UNIQUE NOT NULL,
+    phone           VARCHAR(20),
+    email           VARCHAR(100),
+    address         VARCHAR(255)
+);
+
+alter table clients
+    owner to kurs_adm;
+-- Таблица типов вкладов
+CREATE TABLE deposit_types
+(
+    type_id       SERIAL PRIMARY KEY,
+    name          VARCHAR(100)  NOT NULL,
+    description   TEXT,
+    interest_rate DECIMAL(5, 2) NOT NULL,
+    term_months   INT           NOT NULL,
+    can_withdraw  BOOLEAN DEFAULT FALSE,
+    can_add_funds BOOLEAN DEFAULT FALSE
+);
+alter table deposit_types
+    owner to kurs_adm;
+-- Таблица вкладов
+CREATE TABLE deposits
+(
+    deposit_id   SERIAL PRIMARY KEY,
+    client_id    BIGINT         NOT NULL,
+    type_id      BIGINT         NOT NULL,
+    open_date    DATE           NOT NULL,
+    close_date   DATE,
+    balance      DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    last_accrual DATE,
+    FOREIGN KEY (client_id) REFERENCES clients (client_id),
+    FOREIGN KEY (type_id) REFERENCES deposit_types (type_id)
+);
+alter table deposits
+    owner to kurs_adm;
+-- Таблица операций по вкладам
+CREATE TABLE transactions
+(
+    transaction_id SERIAL PRIMARY KEY,
+    deposit_id     BIGINT         NOT NULL,
+    operation_date TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    operation_type VARCHAR(50)    NOT NULL,
+    amount         DECIMAL(15, 2) NOT NULL,
+    description    TEXT,
+    FOREIGN KEY (deposit_id) REFERENCES deposits (deposit_id)
+);
+alter table transactions
+    owner to kurs_adm;
+-- Таблица пользователей системы
+CREATE TABLE users
+(
+    user_id       SERIAL PRIMARY KEY,
+    username      VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255)       NOT NULL,
+    full_name     VARCHAR(100),
+    role          VARCHAR(50)        NOT NULL
+);
+alter table users
+    owner to kurs_adm;
+-- Таблица начислений процентов (если нужно отдельно хранить)
+CREATE TABLE interest_accruals
+(
+    accrual_id   SERIAL PRIMARY KEY,
+    deposit_id   BIGINT         NOT NULL,
+    accrual_date DATE           NOT NULL,
+    amount       DECIMAL(15, 2) NOT NULL,
+    FOREIGN KEY (deposit_id) REFERENCES deposits (deposit_id)
+);
+alter table users
+    owner to kurs_adm;
