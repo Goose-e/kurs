@@ -21,7 +21,7 @@ public class Deposits {
     private Client client;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "deposit_type", nullable = false)  // <--- исправил здесь
+    @Column(name = "deposit_type", nullable = false)
     private DepositTypeEnum depositType;
 
     @Column(name = "open_date", nullable = false)
