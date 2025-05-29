@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "interest_accruals")
@@ -17,11 +17,16 @@ public class InterestAccruals {
 
     @ManyToOne
     @JoinColumn(name = "deposit_id", nullable = false)
-    private Deposits deposit;
+    private Deposit deposit;
 
     @Column(name = "accrual_date", nullable = false)
-    private LocalDate accrualDate;
+    private LocalDateTime accrualDate;
 
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
+
+    @PrePersist
+    public void prePersist() {
+        accrualDate = LocalDateTime.now();
+    }
 }

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "transactions")
 @Data
-public class Transactions {
+public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "transaction_id")
@@ -16,7 +16,7 @@ public class Transactions {
 
     @ManyToOne
     @JoinColumn(name = "deposit_id", nullable = false)
-    private Deposits deposit;
+    private Deposit deposit;
 
     @Column(name = "operation_date", nullable = false)
     private LocalDateTime operationDate;
@@ -29,4 +29,9 @@ public class Transactions {
 
     @Column(name = "description")
     private String description;
+    @PrePersist
+    public void prePersist() {
+        operationDate = LocalDateTime.now();
+
+    }
 }

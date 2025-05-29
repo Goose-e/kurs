@@ -42,6 +42,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/user/find").permitAll()
                         .requestMatchers("/api/user").authenticated()
                         .requestMatchers("/api/clients/").authenticated()
+                        .requestMatchers("/api/depo/").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

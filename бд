@@ -76,5 +76,5 @@ CREATE TABLE interest_accruals
     amount       DECIMAL(15, 2) NOT NULL,
     FOREIGN KEY (deposit_id) REFERENCES deposits (deposit_id)
 );
-alter table users
+alter table interest_accruals
     owner to kurs_adm;

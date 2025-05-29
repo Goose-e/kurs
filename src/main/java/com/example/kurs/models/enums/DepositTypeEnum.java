@@ -1,38 +1,13 @@
 package com.example.kurs.models.enums;
 
 
+import lombok.Getter;
+
+@Getter
 public enum DepositTypeEnum {
     DEMAND(1L, "DEMAND", "До востребования", 0.5, 0, true, true),
-    FIXED_TERM(2L, "FIXED_TERM", "Срочный вклад", 6.0, 12, false, false),
+    FIXED_TERM(2L, "FIXED_TERM", "Срочный вклад", 10, 6, false, false),
     SAVINGS(3L, "SAVINGS", "Сберегательный вклад", 4.0, 6, true, true);
-
-    public String getDescription() {
-        return description;
-    }
-
-    public double getInterestRate() {
-        return interestRate;
-    }
-
-    public int getTermMonths() {
-        return termMonths;
-    }
-
-    public boolean isCanWithdraw() {
-        return canWithdraw;
-    }
-
-    public boolean isCanAddFunds() {
-        return canAddFunds;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
 
     private final String description;
     private final double interestRate;
