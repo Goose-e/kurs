@@ -23,7 +23,7 @@ public class EnumInit {
             if (!depositTypesRepo.existsById(depEnum.getId())) {
 
                 DepositTypes depositTypes = DepositTypes.builder()
-                        .type_id(depEnum.getId())
+                        .typeId(depEnum.getId())
                         .name(depEnum.getName())
                         .description(depEnum.getDescription())
                         .interest_rate(depEnum.getInterestRate())

@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 public enum DepositTypeEnum {
-    DEMAND(1L, "DEMAND", "До востребования", 0.5, 0, true, true),
+    DEMAND(1L, "DEMAND", "До востребования", 0.5, 4, true, true),
     FIXED_TERM(2L, "FIXED_TERM", "Срочный вклад", 10, 6, false, false),
     SAVINGS(3L, "SAVINGS", "Сберегательный вклад", 4.0, 6, true, true);
 

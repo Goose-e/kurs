@@ -1,12 +1,12 @@
 package com.example.kurs.models;
 
-import com.example.kurs.models.enums.DepositTypeEnum;
-import com.example.kurs.models.enums.DepositTypeEnumConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import static com.example.kurs.services.GenerateCode.generateCode;
 
 @Entity
 @Table(name = "deposits")
@@ -21,9 +21,9 @@ public class Deposit {
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    @Column(name = "type_id", nullable = false)
-    @Convert(converter = DepositTypeEnumConverter.class)
-    private DepositTypeEnum depositType;
+    @ManyToOne
+    @JoinColumn(name = "type_id", nullable = false)
+    private DepositTypes type;
 
     @Column(name = "open_date", nullable = false)
     private LocalDateTime openDate;
@@ -36,12 +36,12 @@ public class Deposit {
 
     @Column(name = "last_accrual")
     private LocalDateTime lastAccrual;
-    @Column(name = "type")
-    private String type;
+    @Column(name = "depo_code")
+    private String depoCode;
 
     @PrePersist
     public void prePersist() {
         lastAccrual = LocalDateTime.now();
-        type = "Later";
+        depoCode = generateCode(Deposit.this.getClass());
     }
 }

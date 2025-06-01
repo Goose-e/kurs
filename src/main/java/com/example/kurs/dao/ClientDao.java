@@ -26,7 +26,12 @@ public class ClientDao {
         clientRepo.save(client);
     }
 
+    public Client findClientsByUserName(String username) {
+        return clientRepo.findClientByUserName(username);
+    }
+
     public List<FindClientsByUsernameResponseDTO> findClientsByUsernameOrFullName(String username) {
         return clientRepo.findClientsByUsernameOrFullName(username, username);
     }
+
 }

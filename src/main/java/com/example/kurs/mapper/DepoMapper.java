@@ -2,10 +2,7 @@ package com.example.kurs.mapper;
 
 import com.example.kurs.dto.deposites.create.CreateDepoRequestDTO;
 import com.example.kurs.dto.deposites.create.CreateDepoResponseDTO;
-import com.example.kurs.models.Client;
-import com.example.kurs.models.Deposit;
-import com.example.kurs.models.InterestAccruals;
-import com.example.kurs.models.Transaction;
+import com.example.kurs.models.*;
 import com.example.kurs.models.enums.DepositTypeEnum;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,10 +14,10 @@ import java.time.LocalDateTime;
 @Component
 public class DepoMapper {
 
-    public Deposit createDeposit(CreateDepoRequestDTO dto, Client client) {
+    public Deposit createDeposit(CreateDepoRequestDTO dto, Client client,DepositTypes depositType) {
         DepositTypeEnum depType = DepositTypeEnum.fromId(dto.getDepoTypeId());
         Deposit deposit = new Deposit();
-        deposit.setDepositType(depType);
+        deposit.setType(depositType);
         deposit.setBalance(dto.getDepoSum());
         deposit.setClient(client);
         deposit.setOpenDate(LocalDateTime.now());
@@ -32,8 +29,9 @@ public class DepoMapper {
         CreateDepoResponseDTO dto = new CreateDepoResponseDTO();
         dto.setMessage("Success");
         dto.setResult(result);
-        dto.setWithdraw(deposit.getDepositType().isCanWithdraw());
-        dto.setAddFunds(deposit.getDepositType().isCanAddFunds());
+        DepositTypeEnum depType = DepositTypeEnum.fromId(Math.toIntExact(deposit.getType().getTypeId()));
+        dto.setWithdraw(depType.isCanWithdraw());
+        dto.setAddFunds(depType.isCanAddFunds());
         dto.setOpenDate(deposit.getOpenDate());
         dto.setCloseDate(deposit.getCloseDate());
         return dto;
@@ -51,7 +49,7 @@ public class DepoMapper {
         transaction.setAmount(amount);
         transaction.setDeposit(deposit);
         transaction.setOperationType(operationType);
-        transaction.setDescription(deposit.getDepositType().getDescription());
+        transaction.setDescription(deposit.getType().getDescription() );
         return transaction;
     }
 }

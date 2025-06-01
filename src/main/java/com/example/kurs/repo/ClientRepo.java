@@ -19,6 +19,9 @@ public interface ClientRepo extends JpaRepository<Client, Long> {
     @Query("SELECT u FROM User u WHERE u.userCode =:userCode")
     User findUserIdByUserCode(@Param("userCode") String userCode);
 
+    @Query("SELECT c FROM Client c JOIN c.user u WHERE u.username =:username")
+    Client findClientByUserName(@Param("username") String username);
+
     @Query("SELECT new com.example.kurs.dto.clients.find.FindClientsByUsernameResponseDTO(" +
             "        u.fullName," +
             "        c.passportNumber," +

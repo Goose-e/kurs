@@ -13,7 +13,8 @@ import lombok.*;
 @AllArgsConstructor
 public class DepositTypes {
     @Id
-    private Long type_id;
+    @Column(name = "type_id")
+    private Long typeId;
     private String name;
     private String description;
     private Double interest_rate;

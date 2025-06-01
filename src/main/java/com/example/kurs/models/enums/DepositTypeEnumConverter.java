@@ -13,7 +13,11 @@ public class DepositTypeEnumConverter implements AttributeConverter<DepositTypeE
 
     @Override
     public DepositTypeEnum convertToEntityAttribute(Long dbData) {
-        return dbData != null ? DepositTypeEnum.fromId(Math.toIntExact(dbData)) : null;
+        if (dbData == null) return null;
+        for (DepositTypeEnum type : DepositTypeEnum.values()) {
+            if (type.getId().equals(dbData)) return type;
+        }
+        throw new IllegalArgumentException("Unknown deposit type ID: " + dbData);
     }
 
 }

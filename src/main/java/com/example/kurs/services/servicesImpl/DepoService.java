@@ -1,25 +1,28 @@
 package com.example.kurs.services.servicesImpl;
 
 import com.example.kurs.config.jwt.CustomAuthenticationToken;
-import com.example.kurs.dao.ClientDao;
-import com.example.kurs.dao.DepositDao;
-import com.example.kurs.dao.InterestAccrualsDao;
-import com.example.kurs.dao.TransactionDao;
-import com.example.kurs.dto.deposites.change_type.ChangeDepoTypeRequestDTO;
-import com.example.kurs.dto.deposites.change_type.ChangeDepoTypeResponseDTO;
+import com.example.kurs.dao.*;
 import com.example.kurs.dto.deposites.close.CloseDepoRequestDTO;
+import com.example.kurs.dto.deposites.close.CloseDepoResponse;
 import com.example.kurs.dto.deposites.close.CloseDepoResponseDTO;
 import com.example.kurs.dto.deposites.create.CreateDepoRequestDTO;
 import com.example.kurs.dto.deposites.create.CreateDepoResponse;
 import com.example.kurs.dto.deposites.create.CreateDepoResponseDTO;
-import com.example.kurs.dto.deposites.get_all.GetAllDepoResponseDTO;
+import com.example.kurs.dto.deposites.get_all_for_user.GetAllDepoResponse;
+import com.example.kurs.dto.deposites.get_all_for_user.GetAllDepositsForUserListDTO;
+import com.example.kurs.dto.deposites.get_all_for_user.GetAllUsersDepoResponseDTO;
+import com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponse;
+import com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponseDTO;
+import com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponseListDTO;
 import com.example.kurs.dto.deposites.report.ReportRequestDTO;
-import com.example.kurs.dto.deposites.top_up.TopUpDepoRequestDTO;
+import com.example.kurs.dto.deposites.top_up.TopUpDepoResponseDTO;
+import com.example.kurs.dto.deposites.top_up.TopUpRequestDTO;
+import com.example.kurs.dto.deposites.top_up.TopUpResponse;
+import com.example.kurs.dto.deposites.withdraw.WithDrawRequestDTO;
+import com.example.kurs.dto.deposites.withdraw.WithDrawResponse;
+import com.example.kurs.dto.deposites.withdraw.WithDrawResponseDTO;
 import com.example.kurs.mapper.DepoMapper;
-import com.example.kurs.models.Client;
-import com.example.kurs.models.Deposit;
-import com.example.kurs.models.InterestAccruals;
-import com.example.kurs.models.Transaction;
+import com.example.kurs.models.*;
 import com.example.kurs.services.IDeposits;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,6 +34,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -40,6 +45,7 @@ public class DepoService implements IDeposits {
     private final DepositDao depositDao;
     private final InterestAccrualsDao interestAccrualsDao;
     private final TransactionDao transactionDao;
+    private final DepositTypeDao depositTypeDao;
 
     @Override
     public ResponseEntity<CreateDepoResponseDTO> createDeposit(CreateDepoRequestDTO depoRequestDTO) {
@@ -50,11 +56,14 @@ public class DepoService implements IDeposits {
             String userCode = customToken.getCode();
             Client client = clientDao.findClientByCode(userCode);
             if (client != null) {
-                Deposit deposit = depoMapper.createDeposit(depoRequestDTO, client);
+                DepositTypes depositTypes = depositTypeDao.findTypeById((long) depoRequestDTO.getDepoTypeId());
+
+                Deposit deposit = depoMapper.createDeposit(depoRequestDTO, client, depositTypes);
                 InterestAccruals accruals = depoMapper.createInterestAccural(deposit, depoRequestDTO.getDepoSum());
                 Transaction transaction = depoMapper.createTransaction(deposit, depoRequestDTO.getDepoSum(), "Create deposit");
                 save(deposit, accruals, transaction);
-                createDepoResponseDTO = depoMapper.createDepoResponseDTO(deposit, depoResultB(deposit));
+                BigDecimal result = deposit.getType().getTypeId() == 1 ? depoResultB(deposit) : depoResultA(deposit);
+                createDepoResponseDTO = depoMapper.createDepoResponseDTO(deposit, result);
                 code = HttpStatus.OK;
             } else {
                 createDepoResponseDTO.setMessage("Server error");
@@ -69,8 +78,8 @@ public class DepoService implements IDeposits {
 
     private BigDecimal depoResultB(Deposit deposit) {
         BigDecimal principal = deposit.getBalance();
-        BigDecimal annualRate = BigDecimal.valueOf(deposit.getDepositType().getInterestRate());
-        int termMonths = deposit.getDepositType().getTermMonths() * 30;
+        BigDecimal annualRate = BigDecimal.valueOf(deposit.getType().getInterest_rate());
+        int termMonths = deposit.getType().getTerm_months() * 30;
         int n = 12;
         BigDecimal term = BigDecimal.valueOf(termMonths);
         BigDecimal daysInYear = BigDecimal.valueOf(365);
@@ -92,8 +101,8 @@ public class DepoService implements IDeposits {
 
     private BigDecimal depoResultA(Deposit deposit) {
         BigDecimal balance = deposit.getBalance();
-        BigDecimal rate = BigDecimal.valueOf(deposit.getDepositType().getInterestRate());
-        int termMonths = deposit.getDepositType().getTermMonths() * 30;
+        BigDecimal rate = BigDecimal.valueOf(deposit.getType().getInterest_rate());
+        int termMonths = deposit.getType().getTerm_months() * 30;
 
         BigDecimal term = BigDecimal.valueOf(termMonths);
         BigDecimal daysInYear = BigDecimal.valueOf(365);
@@ -113,13 +122,66 @@ public class DepoService implements IDeposits {
     }
 
     @Override
-    public ResponseEntity<GetAllDepoResponseDTO> getAllDeposits() {
-        return null;
+    public ResponseEntity<GetAllDepositsForUserListDTO> getAllDepositsForUser(String username) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        GetAllDepositsForUserListDTO responseDTO = new GetAllDepositsForUserListDTO();
+        HttpStatusCode code;
+        if (username == null) {
+            if (authentication instanceof CustomAuthenticationToken customToken) {
+                String userCode = customToken.getCode();
+                List<GetAllUsersDepoResponseDTO> deposits = depositDao.findAllForUserByUserCode(userCode);
+                if (deposits.isEmpty()) {
+                    responseDTO.setMessage("Deposit not found");
+                } else {
+                    responseDTO.setMessage("Deposit found");
+                    responseDTO.setAllDeposits(deposits);
+                }
+                code = HttpStatus.OK;
+            } else {
+                code = HttpStatus.UNAUTHORIZED;
+                responseDTO.setMessage("User unauthorized");
+            }
+        } else {
+            Client client = clientDao.findClientsByUserName(username);
+            if (client != null) {
+                List<GetAllUsersDepoResponseDTO> deposits = depositDao.findAllForUserByUserCode(client.getUser().getUserCode());
+                if (deposits.isEmpty()) {
+                    responseDTO.setMessage("Deposit not found");
+                } else {
+                    responseDTO.setMessage("Deposits found");
+                    responseDTO.setAllDeposits(deposits);
+                }
+            } else {
+                responseDTO.setMessage("Client not found");
+            }
+            code = HttpStatus.OK;
+        }
+
+        return new GetAllDepoResponse(responseDTO, code);
     }
 
     @Override
-    public ResponseEntity<TopUpDepoRequestDTO> topUpDepo(TopUpDepoRequestDTO depoRequestDTO) {
-        return null;
+    public ResponseEntity<TopUpDepoResponseDTO> topUpDepo(TopUpRequestDTO depoRequestDTO) {
+        TopUpDepoResponseDTO responseDTO = new TopUpDepoResponseDTO();
+        HttpStatusCode code;
+        Deposit deposit = depositDao.getDepositByDepositCode(depoRequestDTO.getDepoCode());
+        if (deposit == null) {
+            responseDTO.setMessage("Deposit not found");
+        } else {
+            if (deposit.getType().getCan_add_funds()) {
+                deposit.setBalance(deposit.getBalance().add(depoRequestDTO.getAmount()));
+                Transaction trans = depoMapper.createTransaction(deposit, depoRequestDTO.getAmount(), "top up");
+                InterestAccruals interestAccruals = depoMapper.createInterestAccural(deposit, depoRequestDTO.getAmount());
+                save(deposit, interestAccruals, trans);
+                responseDTO.setMessage("Deposit top upped");
+                responseDTO.setNewBalance(deposit.getBalance());
+            } else {
+                responseDTO.setMessage("Deposit cant be top up");
+
+            }
+        }
+        code = HttpStatus.OK;
+        return new TopUpResponse(responseDTO, code);
     }
 
     @Override
@@ -129,12 +191,100 @@ public class DepoService implements IDeposits {
 
     @Override
     public ResponseEntity<CloseDepoResponseDTO> closeDepo(CloseDepoRequestDTO closeDepoRequestDTO) {
-        return null;
+        CloseDepoResponseDTO responseDTO = new CloseDepoResponseDTO();
+        HttpStatusCode code;
+        Deposit deposit = depositDao.getDepositByDepositCode(closeDepoRequestDTO.getDepoCode());
+        if (deposit == null) {
+            responseDTO.setMessage("Deposit not found");
+        } else {
+            if (deposit.getType().getCan_withdraw()) {
+                responseDTO.setMessage("Deposit cant be withdrawal");
+            } else {
+                if (!deposit.getCloseDate().isBefore(LocalDateTime.now())) {
+                    responseDTO.setMessage("Deposit already closed");
+                } else {
+                    deposit.setCloseDate(LocalDateTime.now());
+                    depositDao.save(deposit);
+                    responseDTO.setMessage("Deposit closed");
+                    responseDTO.setBalance(deposit.getBalance());
+                    responseDTO.setCloseDate(LocalDateTime.now());
+                }
+            }
+        }
+        code = HttpStatus.OK;
+        return new CloseDepoResponse(responseDTO, code);
     }
 
     @Override
-    public ResponseEntity<ChangeDepoTypeResponseDTO> changeDepoType(ChangeDepoTypeRequestDTO
-                                                                            changeDepoTypeRequestDTO) {
-        return null;
+    public ResponseEntity<GetTransHistoryForUserResponseListDTO> getTransHistoryForUser(String username) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        GetTransHistoryForUserResponseListDTO responseDTO = new GetTransHistoryForUserResponseListDTO();
+        HttpStatusCode code;
+        if (username == null) {
+            if (authentication instanceof CustomAuthenticationToken customToken) {
+                String userCode = customToken.getCode();
+                Client client = clientDao.findClientByCode(userCode);
+                code = getTransHistoryForClient(responseDTO, client);
+            } else {
+                code = HttpStatus.UNAUTHORIZED;
+            }
+        } else {
+            Client client = clientDao.findClientsByUserName(username);
+            code = getTransHistoryForClient(responseDTO, client);
+        }
+
+        return new GetTransHistoryForUserResponse(responseDTO, code);
+    }
+
+    @Override
+    public ResponseEntity<WithDrawResponseDTO> withDraw(WithDrawRequestDTO depositRequestDTO) {
+        WithDrawResponseDTO responseDTO = new WithDrawResponseDTO();
+        HttpStatusCode code;
+        Deposit deposit = depositDao.getDepositByDepositCode(depositRequestDTO.getDepoCode());
+        if (deposit == null) {
+            responseDTO.setMessage("Deposit not found.");
+        } else {
+            if (deposit.getType().getCan_withdraw()) {
+                if (deposit.getCloseDate().isBefore(LocalDateTime.now())) {
+                    responseDTO.setMessage("Deposit already closed.");
+                } else {
+                    if (deposit.getBalance().compareTo(depositRequestDTO.getAmount()) < 0) {
+                        responseDTO.setMessage("Request balance is lower than deposit balance.");
+                    } else {
+                        deposit.setBalance(deposit.getBalance().subtract(depositRequestDTO.getAmount()));
+                        responseDTO.setMessage("Deposit withdrawal.");
+                        if (deposit.getBalance().compareTo(BigDecimal.ZERO) == 0) {
+                            deposit.setCloseDate(LocalDateTime.now());
+                            responseDTO.setMessage(responseDTO.getMessage().concat(" Deposit closed"));
+                        }
+                        depositDao.save(deposit);
+                        responseDTO.setReceivedAmount(depositRequestDTO.getAmount());
+                        responseDTO.setAmountRemainder(deposit.getBalance());
+                    }
+                }
+            } else {
+                responseDTO.setMessage("Deposit cant be withdrawal");
+            }
+        }
+        code = HttpStatus.OK;
+        return new WithDrawResponse(responseDTO, code);
+    }
+
+    private HttpStatusCode getTransHistoryForClient(GetTransHistoryForUserResponseListDTO responseDTO, Client client) {
+        HttpStatusCode code;
+        if (client != null) {
+            List<GetTransHistoryForUserResponseDTO> transListDB = transactionDao.getTransHistoryForUser(client.getClientId());
+            if (transListDB.isEmpty()) {
+                responseDTO.setMessage("transactions not found");
+
+            } else {
+                responseDTO.setMessage("transactions found");
+                responseDTO.setTransHistoryForUserResponseDTOList(transListDB);
+            }
+        } else {
+            responseDTO.setMessage("Client not found");
+        }
+        code = HttpStatus.OK;
+        return code;
     }
 }
