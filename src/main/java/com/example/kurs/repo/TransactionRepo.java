@@ -10,7 +10,11 @@ import java.util.List;
 
 public interface TransactionRepo extends JpaRepository<Transaction, Long> {
 
-    @Query("SELECT new com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponseDTO(d.depoCode,tr.operationDate,tr.operationType,tr.amount ) " +
-            "FROM Transaction tr JOIN Deposit d JOIN Client cl  where cl.clientId =:clientId")
+    @Query("SELECT new com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponseDTO(" +
+            "d.depoCode, tr.operationDate, tr.operationType, tr.amount) " +
+            "FROM Transaction tr " +
+            "JOIN tr.deposit d " +
+            "JOIN d.client cl " +
+            "WHERE cl.clientId = :clientId")
     List<GetTransHistoryForUserResponseDTO> getTransHistoryByUserCode(@Param("clientId") Long clientId);
 }

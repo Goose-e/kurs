@@ -14,7 +14,9 @@ import com.example.kurs.dto.deposites.get_all_for_user.GetAllUsersDepoResponseDT
 import com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponse;
 import com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponseDTO;
 import com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponseListDTO;
-import com.example.kurs.dto.deposites.report.ReportRequestDTO;
+import com.example.kurs.dto.deposites.report.ReportResponse;
+import com.example.kurs.dto.deposites.report.ReportResponseDTO;
+import com.example.kurs.dto.deposites.report.ReportResponseListDTO;
 import com.example.kurs.dto.deposites.top_up.TopUpDepoResponseDTO;
 import com.example.kurs.dto.deposites.top_up.TopUpRequestDTO;
 import com.example.kurs.dto.deposites.top_up.TopUpResponse;
@@ -24,6 +26,7 @@ import com.example.kurs.dto.deposites.withdraw.WithDrawResponseDTO;
 import com.example.kurs.mapper.DepoMapper;
 import com.example.kurs.models.*;
 import com.example.kurs.services.IDeposits;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -35,6 +38,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -57,11 +61,9 @@ public class DepoService implements IDeposits {
             Client client = clientDao.findClientByCode(userCode);
             if (client != null) {
                 DepositTypes depositTypes = depositTypeDao.findTypeById((long) depoRequestDTO.getDepoTypeId());
-
                 Deposit deposit = depoMapper.createDeposit(depoRequestDTO, client, depositTypes);
-                InterestAccruals accruals = depoMapper.createInterestAccural(deposit, depoRequestDTO.getDepoSum());
                 Transaction transaction = depoMapper.createTransaction(deposit, depoRequestDTO.getDepoSum(), "Create deposit");
-                save(deposit, accruals, transaction);
+                save(deposit, transaction);
                 BigDecimal result = deposit.getType().getTypeId() == 1 ? depoResultB(deposit) : depoResultA(deposit);
                 createDepoResponseDTO = depoMapper.createDepoResponseDTO(deposit, result);
                 code = HttpStatus.OK;
@@ -121,6 +123,11 @@ public class DepoService implements IDeposits {
         transactionDao.save(transaction);
     }
 
+    private void save(Deposit deposit, Transaction transaction) {
+        depositDao.save(deposit);
+        transactionDao.save(transaction);
+    }
+
     @Override
     public ResponseEntity<GetAllDepositsForUserListDTO> getAllDepositsForUser(String username) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -171,8 +178,7 @@ public class DepoService implements IDeposits {
             if (deposit.getType().getCan_add_funds()) {
                 deposit.setBalance(deposit.getBalance().add(depoRequestDTO.getAmount()));
                 Transaction trans = depoMapper.createTransaction(deposit, depoRequestDTO.getAmount(), "top up");
-                InterestAccruals interestAccruals = depoMapper.createInterestAccural(deposit, depoRequestDTO.getAmount());
-                save(deposit, interestAccruals, trans);
+                save(deposit, trans);
                 responseDTO.setMessage("Deposit top upped");
                 responseDTO.setNewBalance(deposit.getBalance());
             } else {
@@ -185,8 +191,27 @@ public class DepoService implements IDeposits {
     }
 
     @Override
-    public ResponseEntity<ReportRequestDTO> report(ReportRequestDTO reportRequestDTO) {
-        return null;
+    public ResponseEntity<ReportResponseListDTO> report(String period) {
+        ReportResponseListDTO responseListDTO = new ReportResponseListDTO();
+        HttpStatusCode code;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime start;
+        switch (period.toLowerCase()) {
+            case "year" -> start = now.minusYears(1);
+            case "month" -> start = now.minusMonths(1);
+            default -> throw new IllegalArgumentException("Период должен быть 'month' или 'year'");
+        }
+        List<ReportResponseDTO> report = depositDao.report(start, now);
+        if (report.isEmpty()) {
+            responseListDTO.setMessage("Deposits not found");
+        } else {
+            responseListDTO.setMessage("Deposits found");
+            responseListDTO.setReportResponseDTOList(report);
+
+
+        }
+        code = HttpStatus.OK;
+        return new ReportResponse(responseListDTO, code);
     }
 
     @Override
@@ -252,6 +277,8 @@ public class DepoService implements IDeposits {
                         responseDTO.setMessage("Request balance is lower than deposit balance.");
                     } else {
                         deposit.setBalance(deposit.getBalance().subtract(depositRequestDTO.getAmount()));
+                        Transaction transaction = depoMapper.createTransaction(deposit, depositRequestDTO.getAmount(), "withdraw");
+                        save(deposit, transaction);
                         responseDTO.setMessage("Deposit withdrawal.");
                         if (deposit.getBalance().compareTo(BigDecimal.ZERO) == 0) {
                             deposit.setCloseDate(LocalDateTime.now());
@@ -286,5 +313,23 @@ public class DepoService implements IDeposits {
         }
         code = HttpStatus.OK;
         return code;
+    }
+
+    @Transactional
+    public void accrueMonthlyInterest() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Deposit> deposits = depositDao.getAllActiveDeposit();
+        List<InterestAccruals> interestAccrualsList = new ArrayList<>();
+        for (Deposit deposit : deposits) {
+            BigDecimal rate = BigDecimal.valueOf(deposit.getType().getInterest_rate()).divide(BigDecimal.valueOf(100));
+            BigDecimal interest = deposit.getBalance().multiply(rate);
+            deposit.setBalance(deposit.getBalance().add(interest));
+            deposit.setLastAccrual(now);
+            interestAccrualsList.add(depoMapper.createInterestAccural(deposit, interest));
+        }
+
+
+        depositDao.saveAll(deposits);
+        interestAccrualsDao.saveAll(interestAccrualsList);
     }
 }

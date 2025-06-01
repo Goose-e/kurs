@@ -2,6 +2,7 @@ package com.example.kurs.controllers;
 
 import com.example.kurs.dto.deposites.close.CloseDepoRequestDTO;
 import com.example.kurs.dto.deposites.close.CloseDepoResponseDTO;
+import com.example.kurs.dto.deposites.report.ReportResponseListDTO;
 import com.example.kurs.services.IDeposits;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,11 @@ public class DepoAdmController {
     @PostMapping(value = "/close_deposit")
     public ResponseEntity<CloseDepoResponseDTO> closeDeposit(@RequestBody CloseDepoRequestDTO closeDepoRequestDTO) {
         return deposits.closeDepo(closeDepoRequestDTO);
+    }
+
+    @GetMapping(value = "/report")
+    public ResponseEntity<ReportResponseListDTO> report(@RequestParam("period") String period) {
+        return deposits.report(period);
     }
 
 }

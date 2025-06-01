@@ -6,7 +6,7 @@ import com.example.kurs.dto.deposites.create.CreateDepoRequestDTO;
 import com.example.kurs.dto.deposites.create.CreateDepoResponseDTO;
 import com.example.kurs.dto.deposites.get_all_for_user.GetAllDepositsForUserListDTO;
 import com.example.kurs.dto.deposites.get_trans_history.GetTransHistoryForUserResponseListDTO;
-import com.example.kurs.dto.deposites.report.ReportRequestDTO;
+import com.example.kurs.dto.deposites.report.ReportResponseListDTO;
 import com.example.kurs.dto.deposites.top_up.TopUpDepoResponseDTO;
 import com.example.kurs.dto.deposites.top_up.TopUpRequestDTO;
 import com.example.kurs.dto.deposites.withdraw.WithDrawRequestDTO;
@@ -27,8 +27,10 @@ public interface IDeposits {
     ResponseEntity<WithDrawResponseDTO> withDraw(WithDrawRequestDTO depositRequestDTO);
 
     //ADMIN
-    ResponseEntity<ReportRequestDTO> report(ReportRequestDTO reportRequestDTO);
+
+    ResponseEntity<ReportResponseListDTO> report(String period);
 
     ResponseEntity<CloseDepoResponseDTO> closeDepo(CloseDepoRequestDTO closeDepoRequestDTO);
 
+    void accrueMonthlyInterest();
 }

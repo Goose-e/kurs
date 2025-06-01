@@ -1,13 +1,13 @@
 package com.example.kurs.dao;
 
-import com.example.kurs.dto.deposites.get_all_for_user.GetAllDepositsForUserListDTO;
 import com.example.kurs.dto.deposites.get_all_for_user.GetAllUsersDepoResponseDTO;
+import com.example.kurs.dto.deposites.report.ReportResponseDTO;
 import com.example.kurs.models.Deposit;
-import com.example.kurs.models.DepositTypes;
 import com.example.kurs.repo.DepositRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -25,5 +25,19 @@ public class DepositDao {
 
     public Deposit getDepositByDepositCode(String depositCode) {
         return depositRepo.getDepositByDepoCode(depositCode);
+    }
+
+    public List<ReportResponseDTO> report(LocalDateTime start, LocalDateTime end) {
+        return depositRepo.getAdminDepositReport(start, end);
+    }
+
+    public List<Deposit> getAllActiveDeposit() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lastMonth = now.minusMonths(1);
+        return depositRepo.findActiveDepositsForAccrual(now, lastMonth);
+    }
+
+    public void saveAll(List<Deposit> deposits) {
+        depositRepo.saveAll(deposits);
     }
 }
