@@ -43,7 +43,11 @@ public class ClientService implements IClientService {
             Client client = clientDao.findClientByCode(userCode);
             if (client == null) {
                 User user = clientDao.findUserIdByUserCode(userCode);
+
                 client = clientMapper.mapCreateClientToClient(createClientRequestDTO, user);
+
+                System.out.println(client);
+
                 clientDao.saveClient(client);
                 responseDTO = clientMapper.mapClientToCreatedResponseDTO(client, user);
                 code = HttpStatus.CREATED;

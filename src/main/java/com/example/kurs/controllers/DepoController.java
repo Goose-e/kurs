@@ -25,7 +25,7 @@ public class DepoController {
         return deposits.createDeposit(createDepoRequestDTO);
     }
 
-    @GetMapping(value = "/get_all_for_user")
+    @PostMapping(value = "/get_all_for_user")
     public ResponseEntity<GetAllDepositsForUserListDTO> getAllForUser(@RequestParam(value = "username", required = false) String username) {
         return deposits.getAllDepositsForUser(username);
     }
